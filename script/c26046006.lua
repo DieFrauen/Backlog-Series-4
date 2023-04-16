@@ -71,7 +71,7 @@ function c26046006.thfilter(c)
 	return c:IsSetCard(0x646) and c:IsSpell() and c:IsAbleToHand()
 end
 function c26046006.target(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return Duel.IsExistingMatchingCard(c26046006.thfilter,tp,LOCATION_DECK,0,1,nil) end
+	if chk==0 then return Duel.IsExistingMatchingCard(c26046006.thfilter,tp,LOCATION_DECK+LOCATION_GRAVE,0,1,nil) end
 	Duel.SetOperationInfo(0,CATEGORY_TOHAND,nil,1,tp,LOCATION_DECK+LOCATION_GRAVE)
 end
 function c26046006.operation(e,tp,eg,ep,ev,re,r,rp)
