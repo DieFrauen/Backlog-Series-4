@@ -9,110 +9,151 @@ function c26042004.initial_effect(c)
 	e1:SetTarget(c26042004.target)
 	e1:SetOperation(c26042004.activate)
 	c:RegisterEffect(e1)
+	local e2=Effect.CreateEffect(c)
+	e2:SetDescription(aux.Stringid(26042004,1))
+	e2:SetCategory(CATEGORY_SPECIAL_SUMMON)
+	e2:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_O)
+	e2:SetCode(EVENT_TO_HAND)
+	e2:SetProperty(EFFECT_FLAG_DELAY)
+	e2:SetLabel(0)
+	e2:SetRange(LOCATION_GRAVE+LOCATION_HAND)
+	e2:SetCountLimit(1,26042004)
+	e2:SetCondition(c26042004.thcon)
+	e2:SetTarget(c26042004.thtg)
+	e2:SetOperation(c26042004.thop)
+	c:RegisterEffect(e2)
+	local e3=e2:Clone()
+	e3:SetLabel(1)
+	e3:SetCode(EVENT_SPSUMMON_SUCCESS)
+	c:RegisterEffect(e3)
 end
 c26042004.listed_names={26042001}
+function c26042004.opfilter(c)
+	return c:IsFaceup() and c:IsReleasableByEffect()
+end
 function c26042004.filter(c,e,tp,mg,ft,name)
-	if not c:IsRitualMonster() or not c:IsSetCard(0x1642) or not c:IsCanBeSpecialSummoned(e,SUMMON_TYPE_RITUAL,tp,false,true) or (name==true and not c:IsCode(26042001)) then return false end
-	local pdk,odk=Duel.GetFieldGroupCount(tp,LOCATION_DECK,0),Duel.GetFieldGroupCount(1-tp,LOCATION_DECK,0)
+	if not c:IsRitualMonster()
+		or not c:IsSetCard(0x1642)
+		or not c:IsCanBeSpecialSummoned(e,SUMMON_TYPE_RITUAL,tp,false,true)
+		or (name==true and not c:IsCode(26042001))
+		then return false end
+	local mg=mg:Filter(Card.IsCanBeRitualMaterial,c,c)
 	mg=mg:Filter(Card.IsCanBeRitualMaterial,c,c)
+	local pdk,odk=Duel.GetFieldGroupCount(tp,LOCATION_DECK,0),Duel.GetFieldGroupCount(1-tp,LOCATION_DECK,0)
 	local dk=pdk-odk
-	local p1,p2=0,0
 	local lv=c:GetLevel()
-	if dk>0 then p1=dk else p2=math.abs(dk) end
-	lev=lv-math.abs(dk)
-	local p=tp
-	if p2>p1 then p=1-tp end
-	while lev>0 do
-		if ft>0 then
-			if mg:CheckWithSumEqual(Card.GetRitualLevel,lev,1,99,c)
-			and (p1==0 or Duel.IsPlayerCanDiscardDeck(  tp,p1))
-			and (p2==0 or Duel.IsPlayerCanDiscardDeck(1-tp,p2)) then return true end
-		else
-			if mg:IsExists(c26042005.filterF,1,nil,tp,mg,c,lev)
-			and (p1==0 or Duel.IsPlayerCanDiscardDeck(  tp,p1))
-			and (p2==0 or Duel.IsPlayerCanDiscardDeck(1-tp,p2)) then return true end
-		end
-		if p==tp then p1=p1+1 else p2=p2+1 end
-		lev=lev-1
+	local p1,p2,p=0,0,tp
+	if dk>0 then 
+		p1=dk; 
+	elseif dk<0 then
+		dk=math.abs(dk); p2=dk; p=1-tp
 	end
-	return mg:CheckWithSumEqual(Card.GetRitualLevel,lv,1,99,c)
+	if ((p1>0 and Duel.IsPlayerCanDiscardDeck(tp,p1))
+	or (p2>0 and Duel.IsPlayerCanDiscardDeck(1-tp,p2)))
+	and
+	((ft>0 and 
+	(  mg:CheckWithSumGreater(Card.GetRitualLevel,lv-dk,c)))
+	or mg:IsExists(c26042005.filterF,1,nil,tp,mg,c,lv-dk)) then return true end
+	return (ft>0 and 
+	(mg:CheckWithSumGreater(Card.GetRitualLevel,lv,c)))
+	or mg:IsExists(c26042005.filterF,1,nil,tp,mg,c,lv)
 end
 function c26042004.filterF(c,tp,mg,rc,lv)
 	if c:IsControler(tp) and c:IsLocation(LOCATION_MZONE) and c:GetSequence()<5 then
 		Duel.SetSelectedCard(c)
-		return mg:CheckWithSumEqual(Card.GetRitualLevel,lv,1,99,rc)
+		return mg:CheckWithSumGreater(Card.GetRitualLevel,lv,1,99,rc)
 	else return false end
 end
 function c26042004.target(e,tp,eg,ep,ev,re,r,rp,chk)
 	local ft=Duel.GetLocationCount(tp,LOCATION_MZONE)
-	local mg=Duel.GetRitualMaterial(tp)
+	local mg1=Duel.GetRitualMaterial(tp)
+	local mg2=Duel.GetMatchingGroup(c26042004.opfilter,tp,0,LOCATION_MZONE,nil)
+	mg1:Merge(mg2)
 	if chk==0 then
-		return ft>0
-		and (Duel.IsExistingMatchingCard(c26042004.filter,tp,LOCATION_HAND,0,1,nil,e,tp,mg,ft,false)
-		or Duel.IsExistingMatchingCard(c26042004.filter,tp,LOCATION_GRAVE,0,1,nil,e,tp,mg,ft,true))
+		return Duel.IsExistingMatchingCard(c26042004.filter,tp,LOCATION_HAND,0,1,nil,e,tp,mg1,ft,false)
+		or Duel.IsExistingMatchingCard(c26042004.filter,tp,LOCATION_GRAVE,0,1,nil,e,tp,mg1,ft,true)
 	end
 	Duel.SetOperationInfo(0,CATEGORY_SPECIAL_SUMMON,nil,1,tp,LOCATION_HAND+LOCATION_GRAVE)
 	Duel.SetOperationInfo(0,CATEGORY_DECKDES,nil,0,  tp,0)
 	Duel.SetOperationInfo(0,CATEGORY_DECKDES,nil,0,1-tp,0)
 end
 function c26042004.activate(e,tp,eg,ep,ev,re,r,rp)
-	local pdk,odk=Duel.GetFieldGroupCount(tp,LOCATION_DECK,0),Duel.GetFieldGroupCount(1-tp,LOCATION_DECK,0)
-	local dk=pdk-odk
-	if dk>0 then p1=dk else p2=math.abs(dk) end
-	local p1,p2=0,0
+	local mg1=Duel.GetRitualMaterial(tp):Filter(Card.IsCanBeRitualMaterial,tc,tc)
+	local mg2=Duel.GetMatchingGroup(c26042004.opfilter,tp,0,LOCATION_MZONE,nil)
+	mg1:Merge(mg2)
 	local ft=Duel.GetLocationCount(tp,LOCATION_MZONE)
 	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SPSUMMON)
-	local mg=Duel.GetRitualMaterial(tp)
-	local g1=Duel.GetMatchingGroup(c26042004.filter,tp,LOCATION_HAND,0,nil,e,tp,mg,ft,false)
-	local g2=Duel.GetMatchingGroup(aux.NecroValleyFilter(c26042004.filter),tp,LOCATION_GRAVE,0,nil,e,tp,mg,ft,true)
+	local g1=Duel.GetMatchingGroup(c26042004.filter,tp,LOCATION_HAND,0,nil,e,tp,mg1,ft,false)
+	local g2=Duel.GetMatchingGroup(aux.NecroValleyFilter(c26042004.filter),tp,LOCATION_GRAVE,0,nil,e,tp,mg1,ft,true)
 	g1:Merge(g2)
 	local tg=g1:Select(tp,1,1,nil)
-	if #tg<1 then return end
 	local tc=tg:GetFirst()
+	mg1:Sub(tg)
+	local pdk,odk=Duel.GetFieldGroupCount(tp,LOCATION_DECK,0),Duel.GetFieldGroupCount(1-tp,LOCATION_DECK,0)
+	local dk=pdk-odk
 	local lv=tc:GetLevel()
-	local lev=lv
-	mg=mg:Filter(Card.IsCanBeRitualMaterial,tc,tc)
-	for mc in aux.Next(mg) do
-		local e1=Effect.CreateEffect(mc)
-		e1:SetType(EFFECT_TYPE_SINGLE)
-		e1:SetProperty(EFFECT_FLAG_CANNOT_DISABLE)
-		e1:SetCode(EFFECT_RITUAL_LEVEL)
-		e1:SetValue(c26042004.rlevel)
-		e1:SetReset(RESET_CHAIN)
-		mc:RegisterEffect(e1)
+	local p1,p2,p=0,0,tp
+	if dk>0 then 
+		p1=dk; 
+	elseif dk<0 then
+		dk=math.abs(dk); p2=dk; p=1-tp
 	end
+	local mat=Group.CreateGroup()
 	if tc then
-		local mat=Group.CreateGroup()
-		if ft>0 then
-			Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_RELEASE)
-			mat=mg:SelectWithSumEqual(tp,Card.GetRitualLevel,lv,1,99,tc)
-			lev=lev-mat:GetSum(Card.GetLevel)
-		else
-			Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_RELEASE)
-			mat=mg:FilterSelect(tp,c26042004.filterF,1,1,nil,tp,mg,tc)
-			Duel.SetSelectedCard(mat)
-			Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_RELEASE)
-			local mat2=mg:SelectWithSumEqual(tp,Card.GetRitualLevel,lv,1,99,tc)
-			mat:Merge(mat2)
-			lev=lev-mat:GetSum(Card.GetLevel)
+		local lvm=math.max(1,lv-dk)
+		if mg1:CheckWithSumGreater(Card.GetRitualLevel,lvm,tc)
+		and (dk<lv or Duel.SelectYesNo(tp,aux.Stringid(26042004,1))) then
+			if ft>0 then
+				Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_RELEASE)
+				mat=mg1:SelectWithSumGreater(tp,Card.GetRitualLevel,lvm,tc)
+			else
+				Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_RELEASE)
+				mat=mg1:FilterSelect(tp,c26042006.filterF,1,1,nil,tp,mg1,tc)
+				Duel.SetSelectedCard(mat)
+				Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_RELEASE)
+				local mat2=mg1:SelectWithSumGreater(tp,Card.GetRitualLevel,lvm,tc)
+				mat:Merge(mat2)
+			end
 		end
-		Duel.Release(mat,REASON_EFFECT)
-		local p=tp
-		if p2>p1 then p=1-tp end
-		while lev>0 do
-			if p==tp then p1=p1+1 else p2=p2+1 end
-			mat:AddCard(Duel.GetDecktopGroup(p,1))
-			Duel.DiscardDeck(p,math.max(1,dk),REASON_EFFECT+REASON_RELEASE)
-			p=1-p; lev=lev-dk; dk=1
+		local mlv=0
+		if #mat>0 then mlv=mat:GetSum(Card.GetLevel) else mlv=0 end
+		if mlv<lv then
+			mlv=lv-mlv
+			local dkg=Duel.GetDecktopGroup(p,mlv)
+			Duel.DiscardDeck(p,lv-mlv,REASON_EFFECT+REASON_RELEASE)
+			Duel.DisableShuffleCheck()
+			mat:Merge(dkg)
 		end
 		tc:SetMaterial(mat)
+		Duel.ReleaseRitualMaterial(mat)
 		Duel.BreakEffect()
 		Duel.SpecialSummon(tc,SUMMON_TYPE_RITUAL,tp,tp,false,true,POS_FACEUP)
 		tc:CompleteProcedure()
 	end
 end
-function c26042004.rlevel(e,c)
-	local lv=e:GetHandler():GetLevel()
-	local clv=c:GetLevel()
-	return lv*65536+clv
+function c26042004.cfilter(c,e,tp,opp)
+	local lab=e:GetLabel()
+	return opp and c:IsPreviousLocation(LOCATION_DECK) and
+	((lab==0 and not c:IsReason(REASON_DRAW)) or
+	(lab==1 and c:IsSummonPlayer(tp)))
+end
+function c26042004.thcon(e,tp,eg,ep,ev,re,r,rp)
+	local opp=rp~=tp
+	return eg:IsExists(c26042004.cfilter,1,nil,e,1-tp,opp) 
+end
+
+function c26042004.thfilter(c)
+	return (c:IsRitualSpell() or c:IsRitualMonster()) and c:IsAbleToHand()
+end
+function c26042004.thtg(e,tp,eg,ep,ev,re,r,rp,chk)
+	if chk==0 then return Duel.IsExistingMatchingCard(c26042004.thfilter,tp,LOCATION_GRAVE,0,1,nil) end
+	Duel.SetOperationInfo(0,CATEGORY_TOHAND,nil,1,tp,LOCATION_GRAVE)
+end
+function c26042004.thop(e,tp,eg,ep,ev,re,r,rp)
+	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_ATOHAND)
+	local tc=Duel.SelectMatchingCard(tp,aux.NecroValleyFilter(c26042004.thfilter),tp,LOCATION_GRAVE,0,1,1,nil)
+	if tc then
+		Duel.SendtoHand(tc,nil,REASON_EFFECT)
+		Duel.ConfirmCards(1-tp,tc)
+	end
 end
