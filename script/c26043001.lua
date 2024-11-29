@@ -51,8 +51,12 @@ function c26043001.sumop(e,tp,eg,ep,ev,re,r,rp,c)
 	local c=e:GetHandler()
 	local g=e:GetLabelObject()
 	c:SetMaterial(g)
-	local mg=g:GetFirst():GetMaterial():Filter(Card.IsLocation,nil,LOCATION_GRAVE)
+	local mg=g:GetFirst():GetMaterial():Filter(Card.IsLocation,nil,LOCATION_GRAVE|LOCATION_OVERLAY)
 	mg:KeepAlive()
+	Duel.Release(g,REASON_SUMMON+REASON_MATERIAL)
+	if sumop then
+		sumop(g:Clone(),e,tp,eg,ep,ev,re,r,rp,c,minc,zone,relzone,exeff)
+	end
 	local e1=Effect.CreateEffect(c)
 	e1:SetDescription(aux.Stringid(26043001,1))
 	e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
@@ -62,24 +66,22 @@ function c26043001.sumop(e,tp,eg,ep,ev,re,r,rp,c)
 	e1:SetOperation(c26043001.operation)
 	e1:SetReset(RESET_EVENT+RESETS_STANDARD-RESET_TOFIELD+RESET_PHASE+PHASE_END)
 	c:RegisterEffect(e1,true)
-	Duel.Release(g,REASON_SUMMON+REASON_MATERIAL)
-	if sumop then
-		sumop(g:Clone(),e,tp,eg,ep,ev,re,r,rp,c,minc,zone,relzone,exeff)
-	end
 	g:DeleteGroup()
 end
 function c26043001.otfilter(c,tp)
 	local mg=c:GetMaterial()
 	local g=Duel.GetMatchingGroup(c26043001.mgfilter,tp,LOCATION_GRAVE,LOCATION_GRAVE,nil,mg)
+	local g2=c:GetOverlayGroup()
+	g:Merge(g2)
 	return c:IsFaceup() and c:IsReleasable()
-	and c:GetSummonType()&(SUMMON_TYPE_FUSION+SUMMON_TYPE_SYNCHRO+SUMMON_TYPE_LINK)~=0
+	and c:GetSummonType()&(SUMMON_TYPE_FUSION+SUMMON_TYPE_SYNCHRO+SUMMON_TYPE_XYZ+SUMMON_TYPE_LINK)~=0
 	and #g>0 and not mg:IsExists(c26043001.code,1,nil,c)
 end
 function c26043001.mgfilter(c,mg)
 	return (c:GetReason()&REASON_MATERIAL)==REASON_MATERIAL and mg:IsContains(c)
 end
 function c26043001.code(c,mc)
-	return mc:ListsCodeAsMaterial(c:GetCode()) or mc:ListsCode(c:GetCode())
+	return mc:ListsCodeAsMaterial(c:GetCode())
 end
 function c26043001.target(e,tp,eg,ep,ev,re,r,rp,chk)
 	local g=e:GetLabelObject()

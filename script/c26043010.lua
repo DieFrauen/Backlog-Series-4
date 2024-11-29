@@ -1,120 +1,133 @@
 --Hetredominion
 function c26043010.initial_effect(c)
-	--Activate
+	--send to gy
 	local e1=Effect.CreateEffect(c)
-	e1:SetCategory(CATEGORY_DRAW)
+	e1:SetDescription(aux.Stringid(26043010,0))
 	e1:SetType(EFFECT_TYPE_ACTIVATE)
-	e1:SetProperty(EFFECT_FLAG_PLAYER_TARGET)
 	e1:SetCode(EVENT_FREE_CHAIN)
-	e1:SetCost(c26043010.cost)
+	e1:SetCategory(CATEGORY_TOHAND+CATEGORY_SEARCH+CATEGORY_TOGRAVE)
 	e1:SetTarget(c26043010.target)
 	e1:SetOperation(c26043010.activate)
 	c:RegisterEffect(e1)
+	--chain mat
 	local e2=Effect.CreateEffect(c)
+	e2:SetDescription(aux.Stringid(26043010,2))
 	e2:SetType(EFFECT_TYPE_FIELD)
-	e2:SetCode(EFFECT_CANNOT_BE_MATERIAL)
+	e2:SetCode(EFFECT_CHAIN_MATERIAL)
+	e2:SetProperty(EFFECT_FLAG_PLAYER_TARGET)
+	e2:SetTargetRange(1,0)
 	e2:SetRange(LOCATION_SZONE)
-	e2:SetTargetRange(LOCATION_MZONE+LOCATION_HAND,0)
-	e2:SetValue(c26043010.matfilter)
+	e2:SetCondition(c26043010.chcon)
+	e2:SetTarget(c26043010.chtg)
+	e2:SetOperation(c26043010.chop)
+	e2:SetValue(aux.TRUE)
 	c:RegisterEffect(e2)
-	--search
 	local e3=Effect.CreateEffect(c)
-	e3:SetDescription(aux.Stringid(26043010,2))
-	e3:SetCategory(CATEGORY_TOHAND+CATEGORY_SEARCH+CATEGORY_TODECK)
-	e3:SetType(EFFECT_TYPE_IGNITION)
-	e3:SetCountLimit(1,0,EFFECT_COUNT_CODE_SINGLE)
-	e3:SetRange(LOCATION_SZONE)
-	e3:SetTarget(c26043010.thtg1)
-	e3:SetOperation(c26043010.thop1)
-	c:RegisterEffect(e3)
-	--search
-	local e3a=e3:Clone()
-	e3a:SetDescription(aux.Stringid(26043010,3))
-	e3a:SetCategory(CATEGORY_TOHAND+CATEGORY_TODECK)
-	e3a:SetProperty(EFFECT_FLAG_CARD_TARGET)
-	e3a:SetTarget(c26043010.thtg2)
-	e3a:SetOperation(c26043010.thop2)
-	c:RegisterEffect(e3a)
-	
+	e3:SetOperation(c26043010.chk)
+	e2:SetLabelObject(e3)
+	--inactivatable
+	local e4=Effect.CreateEffect(c)
+	e4:SetType(EFFECT_TYPE_FIELD)
+	e4:SetCode(EFFECT_CANNOT_INACTIVATE)
+	e4:SetRange(LOCATION_SZONE)
+	e4:SetValue(c26043010.effectfilter)
+	c:RegisterEffect(e4)
+	local e5=Effect.CreateEffect(c)
+	e5:SetType(EFFECT_TYPE_FIELD)
+	e5:SetCode(EFFECT_CANNOT_DISEFFECT)
+	e5:SetRange(LOCATION_SZONE)
+	e5:SetValue(c26043010.effectfilter)
+	c:RegisterEffect(e5)
 end
 c26043010.listed_series={0x643}
-function c26043010.matfilter(e,c)
-	if not c then return false end
-	return not Duel.IsExistingMatchingCard(c26043010.filtermat,e:GetHandlerPlayer(),0xff,0xff,1,nil,c)
+c26043010.listed_names={CARD_POLYMERIZATION }
+
+function c26043010.effectfilter(e,ct)
+	local te=Duel.GetChainInfo(ct,CHAININFO_TRIGGERING_EFFECT)
+	return te:GetHandler():IsCode(CARD_POLYMERIZATION)
 end
-function c26043010.filtermat(c,fc)
-	return fc:ListsCodeAsMaterial(c:GetCode()) or fc:ListsCode(c:GetCode())
+function c26043010.hate(c)
+	local mat=c:GetMaterial()
+	return c:GetType()&TYPE_FUSION+TYPE_SYNCHRO+TYPE_XYZ+TYPE_LINK ~=0 and (not mat or not mat:IsExists(c26043010.hcode,1,c,c))
 end
-function c26043010.cost(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return true end
-	local e1=Effect.CreateEffect(e:GetHandler())
-	e1:SetType(EFFECT_TYPE_FIELD)
-	e1:SetProperty(EFFECT_FLAG_PLAYER_TARGET+EFFECT_FLAG_OATH)
-	e1:SetCode(EFFECT_CANNOT_BE_MATERIAL)
-	e1:SetTargetRange(LOCATION_MZONE+LOCATION_HAND,0)
-	e1:SetReset(RESET_PHASE+PHASE_END)
-	e1:SetLabelObject(e)
-	e1:SetTarget(c26043010.matfilter)
-	Duel.RegisterEffect(e1,tp)
-	aux.RegisterClientHint(e:GetHandler(),nil,tp,1,0,aux.Stringid(26043010,1),nil)
+function c26043010.hcode(c,rc)
+	return rc:ListsCodeAsMaterial(c:GetCode())
+end
+function c26043010.xtgfilter(c,tp)
+	local tg=Duel.GetMatchingGroup(c26043010.thorg,tp,LOCATION_DECK,0,nil,c)
+	return c:IsSetCard(0x643) and c:IsType(TYPE_FUSION) and c:IsAbleToGrave() and tg:GetClassCount(Card.GetCode)>1
+end
+function c26043010.thorg(c,tc)
+	local code=c:GetCode()
+	return tc:ListsCodeAsMaterial(code) and c:IsAbleToGrave()
 end
 function c26043010.target(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return Duel.IsPlayerCanDraw(tp,1) end
-	Duel.SetTargetPlayer(tp)
-	Duel.SetTargetParam(1)
-	Duel.SetOperationInfo(0,CATEGORY_DRAW,nil,0,tp,1)
+	if chk==0 then return true end
+	Duel.SetOperationInfo(0,CATEGORY_TOGRAVE,nil,1,tp,LOCATION_EXTRA)
+	Duel.SetPossibleOperationInfo(0,CATEGORY_TOGRAVE,nil,1,tp,LOCATION_DECK+LOCATION_EXTRA)
+	Duel.SetPossibleOperationInfo(0,CATEGORY_TOHAND,nil,1,tp,LOCATION_DECK)
 end
 function c26043010.activate(e,tp,eg,ep,ev,re,r,rp)
-	local p,d=Duel.GetChainInfo(0,CHAININFO_TARGET_PLAYER,CHAININFO_TARGET_PARAM)
-	Duel.Draw(p,d,REASON_EFFECT)
-end
-
-function c26043010.filter1(c,lab)
-	return c:IsAbleToHand() and
-		((c:IsSetCard(0x643) and not c:IsCode(26043010) and lab==0) or
-		(c:IsCode(CARD_POLYMERIZATION)) and lab==1)
-end
-function c26043010.filter2(c,lab)
-	return c:IsAbleToGrave() and 
-		((c:IsSetCard(0x643) and not c:IsCode(26043010) and lab==0) or
-		(c:IsCode(CARD_POLYMERIZATION)) and lab==1)
-end
-function c26043010.thtg1(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
-	if chkc then return chkc:IsLocation(LOCATION_REMOVED+LOCATION_GRAVE) and chkc:IsControler(tp) and c26043010.filter1(chkc) end
-	if chk==0 then return Duel.IsExistingTarget(c26043010.filter1,tp,LOCATION_REMOVED+LOCATION_GRAVE,0,1,nil,0) and (Duel.IsExistingMatchingCard(c26043010.filter2,tp,LOCATION_HAND,0,1,nil,1) or e:GetHandler():IsAbleToGrave()) end
-	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_ATOHAND)
-	local g=Duel.SelectTarget(tp,c26043010.filter1,tp,LOCATION_REMOVED+LOCATION_GRAVE,0,1,1,nil,0)
-	Duel.SetOperationInfo(0,CATEGORY_TOHAND,g,1,0,0)
-	Duel.SetOperationInfo(0,CATEGORY_TOGRAVE,nil,1,0,0)
-end
-function c26043010.thop1(e,tp,eg,ep,ev,re,r,rp)
-	local tc=Duel.GetFirstTarget()
-	if tc:IsRelateToEffect(e) then
-		Duel.SendtoHand(tc,nil,REASON_EFFECT)
-		Duel.ShuffleHand(tp)
-		Duel.BreakEffect()
-		local sg=Duel.GetMatchingGroup(c26043010.filter2,tp,LOCATION_HAND,0,nil,1)
-		sg:AddCard(e:GetHandler())
-		local sc=sg:Select(tp,1,1,nil)
-		Duel.SendtoGrave(sc,REASON_EFFECT)
+	if not e:GetHandler():IsRelateToEffect(e) then return end
+	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_TOGRAVE)
+	local g=Duel.GetMatchingGroup(c26043010.xtgfilter,tp,LOCATION_EXTRA,0,nil,tp)
+	if #g>0 and Duel.GetFlagEffect(tp,26043010)==0 and Duel.SelectYesNo(tp,aux.Stringid(26043010,0)) then
+		Duel.RegisterFlagEffect(tp,26043010,RESET_PHASE+PHASE_END,0,1)
+		local tc=g:Select(tp,1,1,nil):GetFirst()
+		tg=Duel.GetMatchingGroup(c26043010.thorg,tp,LOCATION_DECK,0,nil,tc)
+		Duel.SendtoGrave(tc,REASON_EFFECT)
+		if #tg>1 then
+			local sg=aux.SelectUnselectGroup(tg,e,tp,2,2,aux.dncheck,1,tp,HINTMSG_SELECT,nil,nil,true)
+			Duel.ConfirmCards(1-tp,sg)
+			local hg=sg:Filter(Card.IsAbleToHand,nil)
+			if #hg>0 and Duel.SelectYesNo(tp,aux.Stringid(26043010,1)) then
+				hg=hg:Select(tp,1,1,nil)
+				Duel.SendtoHand(hg,nil,REASON_EFFECT)
+				sg:Sub(hg)
+			end
+			Duel.SendtoGrave(sg,REASON_EFFECT)
+		end
 	end
 end
-
-function c26043010.thtg2(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return Duel.IsExistingMatchingCard(c26043010.filter1,tp,LOCATION_DECK+LOCATION_GRAVE,0,1,nil,1) and (Duel.IsExistingMatchingCard(c26043010.filter2,tp,LOCATION_HAND,0,1,nil,0) or e:GetHandler():IsAbleToGrave()) end
-	Duel.SetOperationInfo(0,CATEGORY_TOHAND,nil,1,tp,LOCATION_DECK+LOCATION_GRAVE)
-	Duel.SetOperationInfo(0,CATEGORY_TODECK,nil,1,tp,1)
+function c26043010.chcon(e,tp,eg,ep,ev,re,r,rp)
+	local c=e:GetHandler()
+	local tp=e:GetHandlerPlayer()
+	local g=Duel.GetMatchingGroup(c26043010.self,tp,LOCATION_ONFIELD,0,nil,c)
+	return Duel.IsExistingMatchingCard(c26043010.hate,tp,0,LOCATION_MZONE,1,nil) and Duel.GetFlagEffect(tp,26043010)==0 and
+	g:GetFirst()==c
 end
-function c26043010.thop2(e,tp,eg,ep,ev,re,r,rp)
-	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_ATOHAND)
-	local g=Duel.SelectMatchingCard(tp,c26043010.filter1,tp,LOCATION_DECK+LOCATION_GRAVE,0,1,1,nil,1)
-	if #g==0 then return end
-	Duel.SendtoHand(g,nil,REASON_EFFECT)
-	Duel.ConfirmCards(1-tp,g)
-	Duel.ShuffleHand(tp)
-	Duel.BreakEffect()
-	local sg=Duel.GetMatchingGroup(c26043010.filter2,tp,LOCATION_HAND,0,nil,0)
-	sg:AddCard(e:GetHandler())
-	local sc=sg:Select(tp,1,1,nil)
-	Duel.SendtoGrave(sc,REASON_EFFECT)
+function c26043010.self(c,tc)
+	return c:IsCode(26043010) and c:IsFaceup() and not c:IsDisabled()
+end
+function c26043010.chfilter(c,e,tp)
+	return c:IsMonster() and c:IsCanBeFusionMaterial() and not c:IsImmuneToEffect(e)
+end
+function c26043010.chfilter2(c,e,tp)
+	return c:IsMonster() and c:IsCanBeFusionMaterial() and c:IsAbleToGrave() and c:IsSetCard(0x643)
+end
+function c26043010.chtg(e,te,tp,value)
+	if value&SUMMON_TYPE_FUSION==0 then return Group.CreateGroup() end
+	local g1=Duel.GetMatchingGroup(c26043010.chfilter,tp,LOCATION_MZONE+LOCATION_HAND,0,nil,te,tp)
+	local g2=Duel.GetMatchingGroup(c26043010.chfilter2,tp,LOCATION_DECK,0,nil,te,tp)
+	g1:Merge(g2)
+	return g1
+end
+function c26043010.chop(e,te,tp,tc,mat,sumtype,sg,sumpos)
+	if not sumtype then sumtype=SUMMON_TYPE_FUSION end
+	tc:SetMaterial(mat)
+	Duel.SendtoGrave(mat,REASON_EFFECT+REASON_MATERIAL+REASON_FUSION)
+	if sg then
+		sg:AddCard(tc)
+		Duel.RegisterFlagEffect(tp,26043010,RESET_PHASE+PHASE_END,0,1)
+	else
+		Duel.SpecialSummon(tc,sumtype,tp,tp,false,false,sumpos)
+	end
+end
+function c26043010.hetdom(c)
+	return c:IsFaceup() and c:IsCode(26043010)
+end
+function c26043010.chk(tp,sg,fc)
+	local hetg=Duel.GetMatchingGroup(c26043010.hetdom,tp,LOCATION_ONFIELD,0,nil)
+	local dg=sg:Filter(Card.IsLocation,nil,LOCATION_DECK)
+	return #dg<=#hetg
 end

@@ -1,4 +1,4 @@
---Hetredoximus World Eugenesis
+--Hetredoxis Warheit
 function c26043007.initial_effect(c)
 	--Fusion Material
 	c:EnableReviveLimit()
@@ -35,7 +35,7 @@ function c26043007.initial_effect(c)
 	e2:SetCategory(CATEGORY_TOGRAVE)
 	e2:SetType(EFFECT_TYPE_IGNITION)
 	e2:SetRange(LOCATION_MZONE)
-	e2:SetCost(c26043007.tgcost)
+	e2:SetCountLimit(1)
 	e2:SetTarget(c26043007.tgtg)
 	e2:SetOperation(c26043007.tgop)
 	c:RegisterEffect(e2)
@@ -48,7 +48,6 @@ function c26043007.initial_effect(c)
 	e0:SetTargetRange(1,0)
 	c:RegisterEffect(e0)
 end
-
 function c26043007.checkop(e,tp,eg,ep,ev,re,r,rp)
 	if c26043007[0] then return end
 	local tc=eg:GetFirst()
@@ -56,9 +55,9 @@ function c26043007.checkop(e,tp,eg,ep,ev,re,r,rp)
 		if tc:GetSummonLocation()==LOCATION_EXTRA then
 			c26043007[0]=true
 			if not c26043007[1] then
-				if Duel.IsPlayerAffectedByEffect(0,26043007) then
+				if Duel.IsPlayerAffectedByEffect(0,26043007) or tc:IsCode(26043007) then
 				Duel.Hint(HINT_CARD,1,26043007)
-				elseif Duel.IsPlayerAffectedByEffect(1,26043007) then
+				elseif Duel.IsPlayerAffectedByEffect(1,26043007)or tc:IsCode(26043007) then
 				Duel.Hint(HINT_CARD,0,26043007)
 				end
 				c26043007[0]=true
@@ -76,54 +75,40 @@ end
 function c26043007.aclimit(e,re,tp)
 	local rc=re:GetHandler()
 	local mat=rc:GetMaterial()
-	return rc:IsType(TYPE_FUSION+TYPE_SYNCHRO+TYPE_XYZ+TYPE_LINK)
+	return not (rc:IsType(TYPE_FUSION+TYPE_SYNCHRO+TYPE_XYZ+TYPE_LINK)
+	and mat:IsExists(c26043007.code,1,nil,mat,rc))
 	and re:IsActiveType(TYPE_MONSTER)
-	and not mat:IsExists(c26043007.code,1,nil,mat,rc)
 end
 function c26043007.code(c,mat,rc)
-	return (rc:ListsCodeAsMaterial(c:GetCode()) or rc:ListsCode(c:GetCode()))
+	local REASON=REASON_FUSION+REASON_SYNCHRO+REASON_XYZ+REASON_LINK 
+	return rc:ListsCodeAsMaterial(c:GetCode()) 
+	and c:GetReason()&REASON ~=0
 end
 function c26043007.cfilter(c,tp)
 	local REASON=REASON_FUSION+REASON_SYNCHRO+REASON_XYZ+REASON_LINK 
-	return c:IsAbleToRemoveAsCost()
+	return c:IsAbleToRemove()
 	and c:IsMonster()
-	and c:GetReason()&REASON~=0
+	and c:GetReason()&REASON ~=0
 	and not Duel.IsPlayerAffectedByEffect(tp,69832741)
 end
-function c26043007.tgcost(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return Duel.IsExistingMatchingCard(c26043007.cfilter,tp,0,LOCATION_GRAVE,1,nil,1-tp) end
-	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_REMOVE)
-	local g=Duel.SelectMatchingCard(1-tp,c26043007.cfilter,tp,0,LOCATION_GRAVE,1,1,nil,1-tp)
-	Duel.Remove(g,POS_FACEUP,REASON_COST)
-	e:SetLabel(g:GetFirst():GetCode())
-end
 function c26043007.tgtg(e,tp,eg,ep,ev,re,r,rp,chk)
-	local g=Duel.GetMatchingGroup(Card.IsAbleToGrave,tp,0,LOCATION_EXTRA,nil)
-	if chk==0 then return #g>0 and e:GetHandler():GetFlagEffect(26043007)==0 end
+	local g1=Duel.GetMatchingGroup(Card.IsAbleToRemove,tp,0,LOCATION_EXTRA,nil)
+	local g2=Duel.GetMatchingGroup(c26043007.cfilter,tp,0,LOCATION_GRAVE,nil,tp)
+	if chk==0 then return #g1>0 and #g2>0 and e:GetHandler():GetFlagEffect(26043007)==0 end
 	Duel.SetOperationInfo(0,CATEGORY_TOGRAVE,nil,1,1-tp,LOCATION_EXTRA)
 end
-
 function c26043007.tgop(e,tp,eg,ep,ev,re,r,rp)
-	local code=e:GetLabel()
-	local g=Duel.GetMatchingGroup(Card.IsAbleToGrave,tp,0,LOCATION_EXTRA,nil)
-	if #g>0 then
+	local g1=Duel.GetMatchingGroup(Card.IsAbleToRemove,tp,0,LOCATION_EXTRA,nil,tp)
+	local g2=Duel.GetMatchingGroup(c26043007.cfilter,tp,0,LOCATION_GRAVE,nil,tp)
+	while #g1>0 and #g2>0 do
 		Duel.Hint(HINT_SELECTMSG,1-tp,HINTMSG_TOGRAVE)
-		local tc=g:Select(1-tp,1,1,nil):GetFirst()
-		Duel.SendtoGrave(tc,REASON_EFFECT)
-		-- Negate its effects
-		local e1=Effect.CreateEffect(e:GetHandler())
-		e1:SetType(EFFECT_TYPE_SINGLE)
-		e1:SetCode(EFFECT_DISABLE)
-		e1:SetProperty(EFFECT_FLAG_CANNOT_DISABLE)
-		e1:SetReset(RESET_EVENT+RESETS_STANDARD)
-		tc:RegisterEffect(e1)
-		local e2=e1:Clone()
-		e2:SetCode(EFFECT_DISABLE_EFFECT)
-		e2:SetValue(RESET_EVENT+RESETS_STANDARD)
-		tc:RegisterEffect(e2)
-		if tc:ListsCodeAsMaterial(code) or tc:ListsCode(code) then
-			e:GetHandler():RegisterFlagEffect(26043007,RESET_EVENT+RESETS_STANDARD+RESET_PHASE+PHASE_END,EFFECT_FLAG_CLIENT_HINT,1,0,aux.Stringid(26043007,1))
+		local tc1=g1:Select(1-tp,1,1,nil):GetFirst()
+		Duel.Hint(HINT_SELECTMSG,1-tp,HINTMSG_TOGRAVE)
+		local tc2=g2:Select(1-tp,1,1,nil):GetFirst()
+		g1:Sub(tc1);g2:Sub(tc2);
+		Duel.Remove(Group.FromCards(tc1,tc2),POS_FACEUP,REASON_EFFECT)
+		if (#g1==0 and #g2==0) or tc1:ListsCodeAsMaterial(tc2:GetCode()) or not Duel.SelectYesNo(tp,aux.Stringid(26043007,1)) then
+			return
 		end
 	end
-	e:SetLabel(0)
 end

@@ -42,19 +42,18 @@ function c26043002.sucon(e,c)
 	return ft>-1 and aux.SelectUnselectGroup(rg,e,tp,2,2,nil,0)
 end
 function c26043002.matfilter(c,tp)
-	return c:IsAbleToRemoveAsCost() and not Duel.IsExistingMatchingCard(c26043002.fsfilter,tp,LOCATION_MZONE,LOCATION_MZONE,1,nil,c) and c:GetReason()&REASON_MATERIAL+REASON_SYNCHRO+REASON_FUSION~=0 and not Duel.IsPlayerAffectedByEffect(tp,69832741)
+	return c:IsAbleToRemoveAsCost() and not Duel.IsExistingMatchingCard(c26043002.fsfilter,tp,LOCATION_MZONE,LOCATION_MZONE,1,nil,c) and c:GetReason()&REASON_MATERIAL+REASON_SYNCHRO+REASON_FUSION+REASON_LINK ~=0 and not Duel.IsPlayerAffectedByEffect(tp,69832741)
 end
 function c26043002.fsfilter(c,tc)
-	local code=tc:GetCode()
 	return c:IsFaceup()
 	and c:GetMaterial():IsContains(tc)
-	and (c:ListsCodeAsMaterial(code) or c:ListsCode(code))
+	and c:ListsCodeAsMaterial(tc:GetCode())
 end
 function c26043002.xfilter(c,e)
-	return not Duel.IsExistingMatchingCard(c26043002.code,e:GetHandlerPlayer(),LOCATION_MZONE,LOCATION_MZONE,1,nil,c)
+	return c:IsAbleToRemoveAsCost() and not Duel.IsExistingMatchingCard(c26043002.xcode,e:GetHandlerPlayer(),LOCATION_MZONE,LOCATION_MZONE,1,nil,c)
 end
-function c26043002.code(c,mc)
-	return c:IsFaceup() and c:GetSummonType()&(SUMMON_TYPE_XYZ)~=0 and not (c:ListsCodeAsMaterial(mc:GetCode()) or c:ListsCode(mc:GetCode()))
+function c26043002.xcode(c,mc)
+	return c:IsFaceup() and c:ListsCodeAsMaterial(mc:GetCode())
 end
 function c26043002.sutg(e,tp,eg,ep,ev,re,r,rp,c)
 	local c=e:GetHandler()
@@ -83,7 +82,7 @@ function c26043002.suop(e,tp,eg,ep,ev,re,r,rp,c)
 	c:SetMaterial(g)
 	local tg=Duel.GetFirstMatchingCard(c26043002.neg,tp,LOCATION_MZONE,LOCATION_MZONE,nil,g:GetFirst(),g:GetNext())
 	Duel.Remove(g,POS_FACEUP,REASON_SUMMON+REASON_MATERIAL)
-	if  tg then
+	if tg then
 		tg:RegisterFlagEffect(26043002,RESET_EVENT+(RESETS_STANDARD-RESET_TOFIELD-RESET_LEAVE)+RESET_PHASE+PHASE_END,0,1)
 		local e1=Effect.CreateEffect(c)
 		e1:SetDescription(aux.Stringid(26043002,1))
@@ -125,9 +124,8 @@ function c26043002.mgfilter(c,mg)
 	return (c:GetReason()&REASON_MATERIAL)==REASON_MATERIAL and mg:IsContains(c)
 end
 function c26043002.code(c,mc)
-	return mc:ListsCodeAsMaterial(c:GetCode()) or mc:ListsCode(c:GetCode())
+	return mc:ListsCodeAsMaterial(c:GetCode())
 end
 function c26043002.label(c)
 	return c:GetFlagEffect(26043002)~=0
 end
-
